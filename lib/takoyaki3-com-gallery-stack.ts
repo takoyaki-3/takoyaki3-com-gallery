@@ -72,10 +72,16 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
       'requests==2.32.3'
     );
 
-    const pilLayer = createPythonLayer(
-      'PilLayer',
-      'Layer containing the Pillow library',
-      'Pillow==10.2.0'
+    const jwtLayer = createPythonLayer(
+      'JwtLayer',
+      'Layer containing the PyJWT library',
+      'PyJWT==2.10.1'
+    );
+
+    const cryptographyLayer = createPythonLayer(
+      'CryptographyLayer',
+      'Layer containing the cryptography library',
+      'cryptography==44.0.2'
     );
 
     // DynamoDB テーブルの作成
@@ -97,7 +103,7 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
         GALLERY_TABLE_NAME: galleryTable.tableName,
       },
       architecture: lambda.Architecture.ARM_64,
-      layers: [requestsLayer, pilLayer],
+      layers: [requestsLayer, jwtLayer, cryptographyLayer],
     });
     postGalleryHandler.addToRolePolicy(new cdk.aws_iam.PolicyStatement({
       actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
