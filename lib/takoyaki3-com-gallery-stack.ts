@@ -101,6 +101,7 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
       code: lambda.Code.fromAsset('lambda'),
       environment: {
         GALLERY_TABLE_NAME: galleryTable.tableName,
+        ALLOWED_USERS: process.env.ALLOWED_USERS ?? '',
       },
       architecture: lambda.Architecture.ARM_64,
       layers: [requestsLayer, jwtLayer, cryptographyLayer],
