@@ -130,7 +130,7 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
     gallery.addMethod('GET', getGalleryIntegration);
 
     // API Gateway の URL を出力
-    new cdk.CfnOutput(this, 'GalleryApiUrl', {
+    new cdk.CfnOutput(this, 'ApiUrl', {
       description: 'Gallery API URL',
       value: api.url ?? 'Something went wrong with the deployment',
     });
