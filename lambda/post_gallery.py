@@ -12,6 +12,7 @@ table = dynamodb.Table(TABLE_NAME)
 allowed_users = os.environ.get('ALLOWED_USERS', '').split(',')
 
 def handler(event, context):
+  print(json.dumps(event))
   try:
     # Verify authentication token
     token = event.get('headers', {}).get('Authorization', '').replace('Bearer ', '')
