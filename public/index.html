@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S3 Upload Example</title>
+  <style>
+    /* （スタイルはそのまま） */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background-color: #f5f7fa;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .upload-area {
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .upload-area.drag-over {
+      border-color: #4a90e2;
+      background-color: rgba(74, 144, 226, 0.1);
+    }
+    .upload-area i {
+      font-size: 48px;
+      color: #aaa;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .file-input-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+    #fileInput {
+      display: none;
+    }
+    .upload-btn, .browse-btn {
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.3s;
+      margin: 0 5px;
+    }
+    .upload-btn:hover, .browse-btn:hover {
+      background-color: #3a7bc8;
+    }
+    .upload-btn:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    #status {
+      margin: 15px 0;
+      padding: 10px;
+      background-color: #f8f8f8;
+      border-radius: 4px;
+      min-height: 20px;
+    }
+    .error {
+      color: #e74c3c;
+      margin-top: 10px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    #errorDetails {
+      background-color: #f8f8f8;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-top: 10px;
+      max-height: 200px;
+      overflow: auto;
+      display: none;
+      border-radius: 4px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #4a90e2;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      transform: translateY(20px);
+      z-index: 1000;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .file-info {
+      margin-top: 10px;
+      color: #666;
+    }
+    .result-container {
+      display: none;
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f1f9f1;
+      border-radius: 4px;
+      border-left: 4px solid #52c41a;
+    }
+    .copy-url-btn {
+      background-color: #52c41a;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+      font-weight: 500;
+      transition: background-color 0.3s;
+    }
+    .copy-url-btn:hover {
+      background-color: #49ad17;
+    }
+    .file-url {
+      word-break: break-all;
+      padding: 8px;
+      background-color: white;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      margin-top: 10px;
+      font-family: monospace;
+    }
+    .file-list {
+      margin: 15px 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    .file-item:last-child {
+      border-bottom: none;
+    }
+    .remove-file {
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    .metadata-form {
+      margin-top: 20px;
+      border-top: 1px solid #eee;
+      padding-top: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .form-group textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    .tags-input {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      min-height: 44px;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      background-color: #e1f0ff;
+      border-radius: 4px;
+      padding: 2px 8px;
+      margin: 2px;
+    }
+    .tag-text {
+      margin-right: 5px;
+    }
+    .tag-remove {
+      cursor: pointer;
+      color: #4a90e2;
+      font-weight: bold;
+    }
+    .tag-input {
+      flex: 1;
+      min-width: 60px;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 5px;
+    }
+    .progress-container {
+      margin-top: 10px;
+      width: 100%;
+      height: 20px;
+      background-color: #f0f0f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background-color: #4a90e2;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    /* Responsive styles for mobile devices */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .container {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      .upload-area {
+        padding: 20px 10px;
+      }
+
+      .upload-area i {
+        font-size: 36px;
+      }
+
+      .file-input-container {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .browse-btn, .upload-btn {
+        width: 100%;
+        padding: 12px;
+        margin: 5px 0;
+      }
+
+      .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 10px;
+      }
+
+      .file-item div {
+        margin-bottom: 8px;
+        word-break: break-all;
+      }
+
+      .remove-file {
+        align-self: flex-end;
+      }
+
+      .toast {
+        width: 80%;
+        left: 10%;
+        right: 10%;
+        text-align: center;
+      }
+
+      .copy-url-btn {
+        width: 100%;
+      }
+    }
+
+    /* Additional responsive improvements */
+    @media (max-width: 480px) {
+      .container {
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      .tag {
+        margin-bottom: 8px;
+      }
+
+      .tags-input {
+        padding: 8px 5px;
+      }
+
+      #status {
+        font-size: 0.9rem;
+      }
+
+      .file-url {
+        font-size: 0.8rem;
+      }
+    }
+  </style>
+  <script src="//takoyaki3-auth.web.app/auth.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>S3 File Upload</h1>
+
+    <div id="upload-area" class="upload-area">
+      <i>📁</i>
+      <p>Drag and drop files here or</p>
+      <p>Paste an image from your clipboard</p>
+      <div class="file-input-container">
+        <button class="browse-btn" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+      </div>
+      <input type="file" id="fileInput" multiple>
+      <div class="file-info" id="file-info"></div>
+    </div>
+
+    <div id="selected-files" class="file-list"></div>
+
+    <div class="metadata-form">
+      <div class="form-group">
+        <label for="tagsInput">Tags (comma or Enter to add)</label>
+        <div class="tags-input" id="tagsContainer">
+          <input type="text" id="tagInput" class="tag-input" placeholder="Add tag...">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="textInput">Description</label>
+        <textarea id="textInput" placeholder="Enter description..."></textarea>
+      </div>
+    </div>
+
+    <button id="uploadBtn" class="upload-btn" onclick="uploadFiles()" disabled>Upload Files</button>
+
+    <div id="status"></div>
+    <div id="errorDetails" class="error"></div>
+
+    <div id="result-container" class="result-container">
+      <h3>Upload Success! ✅</h3>
+      <p>Your file URLs:</p>
+      <div id="fileUrls" class="file-url"></div>
+      <button id="copyUrlBtn" class="copy-url-btn" onclick="copyUrlToClipboard()">Copy URLs to clipboard</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">URLs copied to clipboard!</div>
+
+  <script>
+    // Element references
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInfoElement = document.getElementById('file-info');
+    const statusElement = document.getElementById('status');
+    const errorDetailsElement = document.getElementById('errorDetails');
+    const resultContainer = document.getElementById('result-container');
+    const fileUrlsElement = document.getElementById('fileUrls');
+    const toast = document.getElementById('toast');
+    const selectedFilesContainer = document.getElementById('selected-files');
+    const tagsContainer = document.getElementById('tagsContainer');
+    const tagInput = document.getElementById('tagInput');
+    const textInput = document.getElementById('textInput');
+
+    // File data
+    let selectedFiles = [];
+    let fileUrls = [];
+    let tags = [];
+
+    // Tag input handler
+    tagInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        addTag(this.value.trim());
+        this.value = '';
+      }
+    });
+
+    tagInput.addEventListener('blur', function() {
+      if (this.value.trim() !== '') {
+        addTag(this.value.trim());
+        this.value = '';
+      }
+    });
+
+    function addTag(tagText) {
+      if (tagText === '' || tags.includes(tagText)) return;
+
+      tags.push(tagText);
+
+      const tagElement = document.createElement('span');
+      tagElement.classList.add('tag');
+
+      // For mobile screens, make sure the tag text doesn't overflow
+      let displayTag = tagText;
+      if (window.innerWidth <= 480 && tagText.length > 15) {
+        displayTag = tagText.substring(0, 12) + '...';
+      }
+
+      tagElement.innerHTML = `
+        <span class="tag-text" title="${tagText}">${displayTag}</span>
+        <span class="tag-remove" data-tag="${tagText}">&times;</span>
+      `;
+
+      tagElement.querySelector('.tag-remove').addEventListener('click', function() {
+        const tagToRemove = this.getAttribute('data-tag');
+        tags = tags.filter(tag => tag !== tagToRemove);
+        tagElement.remove();
+      });
+
+      tagsContainer.insertBefore(tagElement, tagInput);
+    }
+
+    // Drag and drop functionality
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('drag-over');
+    });
+
+    uploadArea.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileSelection(Array.from(files));
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      if (fileInput.files.length > 0) {
+        handleFileSelection(Array.from(fileInput.files));
+      }
+    });
+
+    // Clipboard paste functionality
+    document.addEventListener('paste', (e) => {
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) {
+            const extension = file.type.split('/')[1];
+            const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').split('.')[0];
+            const fileName = `${timestamp}.${extension}`;
+            const renamedFile = new File([file], fileName, { type: file.type });
+            handleFileSelection([renamedFile]);
+          }
+          break;
+        }
+      }
+    });
+
+    function handleFileSelection(files) {
+      if (!files || files.length === 0) return;
+
+      // Add files to selected files array
+      files.forEach(file => {
+        if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+          selectedFiles.push(file);
+        }
+      });
+
+      updateFilesList();
+      updateUploadButtonState();
+    }
+
+    function updateFilesList() {
+      selectedFilesContainer.innerHTML = '';
+
+      if (selectedFiles.length === 0) {
+        fileInfoElement.textContent = '';
+        return;
+      }
+
+      fileInfoElement.textContent = `${selectedFiles.length} file(s) selected`;
+
+      selectedFiles.forEach((file, index) => {
+        const fileItem = document.createElement('div');
+        fileItem.classList.add('file-item');
+
+        // Check if the filename is longer than 25 characters on mobile
+        let displayName = file.name;
+        if (window.innerWidth <= 480 && file.name.length > 25) {
+          const ext = file.name.split('.').pop();
+          displayName = file.name.substring(0, 20) + '...' + (ext ? '.' + ext : '');
+        }
+
+        fileItem.innerHTML = `
+          <div>${displayName} (${formatFileSize(file.size)})</div>
+          <button class="remove-file" data-index="${index}">Remove</button>
+        `;
+        selectedFilesContainer.appendChild(fileItem);
+      });
+
+      // Add event listeners to remove buttons
+      document.querySelectorAll('.remove-file').forEach(button => {
+        button.addEventListener('click', function() {
+          const index = parseInt(this.getAttribute('data-index'));
+          selectedFiles.splice(index, 1);
+          updateFilesList();
+          updateUploadButtonState();
+        });
+      });
+    }
+
+    function updateUploadButtonState() {
+      uploadBtn.disabled = selectedFiles.length === 0;
+    }
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showToast() {
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    function copyUrlToClipboard() {
+      const urlText = fileUrls.join('\n');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(urlText).then(() => {
+          showToast();
+        }).catch(err => {
+          console.error('Failed to copy URL using clipboard API: ', err);
+          fallbackCopyToClipboard(urlText);
+        });
+      } else {
+        console.warn('Clipboard API not available, using fallback method.');
+        fallbackCopyToClipboard(urlText);
+      }
+    }
+
+    function fallbackCopyToClipboard(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        showToast();
+      } catch (err) {
+        console.error('Fallback copy failed: ', err);
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+
+    async function uploadFiles() {
+      if (selectedFiles.length === 0) {
+        alert('Please select at least one file');
+        return;
+      }
+
+      // Disable the upload button and update status
+      uploadBtn.disabled = true;
+      statusElement.textContent = "Uploading...";
+      resultContainer.style.display = 'none';
+      fileUrls = []; // Reset the URLs array
+
+      try {
+        const uploadedFileUrls = [];
+        const uploadApiUrl = '${UPLOAD_API_ENDPOINT}';
+        const galleryApiUrl = '${GALLERY_API_ENDPOINT}';
+
+        // Upload each file sequentially
+        for (let i = 0; i < selectedFiles.length; i++) {
+          const file = selectedFiles[i];
+          statusElement.textContent = `Uploading file ${i+1}/${selectedFiles.length}: ${file.name}`;
+
+          // Create progress bar for current file
+          const progressContainer = document.createElement('div');
+          progressContainer.classList.add('progress-container');
+          const progressBar = document.createElement('div');
+          progressBar.classList.add('progress-bar');
+          progressContainer.appendChild(progressBar);
+          statusElement.appendChild(progressContainer);
+
+          // Get upload URL from API
+          const uploadUrlResponse = await fetch(`${uploadApiUrl}/upload`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authIdToken}`
+            },
+            body: JSON.stringify({
+              key: file.name,
+              fileType: file.type,
+              expires: 3600
+            })
+          });
+
+          if (!uploadUrlResponse.ok) {
+            let errorText = `APIリクエスト失敗: ${uploadUrlResponse.status} ${uploadUrlResponse.statusText}`;
+            let errorDetails = {};
+            try {
+              const errorBody = await uploadUrlResponse.json();
+              errorDetails = errorBody;
+              errorText += `\n詳細: ${JSON.stringify(errorBody, null, 2)}`;
+            } catch (e) {
+              errorText += '\nレスポンスボディの取得に失敗しました';
+            }
+            displayError(errorText, null, {
+              status: uploadUrlResponse.status,
+              statusText: uploadUrlResponse.statusText,
+              details: errorDetails
+            });
+            return;
+          }
+
+          let apiData = await uploadUrlResponse.json();
+          // APIレスポンスが文字列の場合、パース
+          let responseData;
+          try {
+            responseData = typeof apiData.body === 'string' ? JSON.parse(apiData.body) : apiData.body;
+          } catch (parseError) {
+            displayError('APIレスポンスのbody解析に失敗しました', parseError, apiData);
+            return;
+          }
+          if (!apiData.url) {
+            displayError('APIレスポンスにuploadURLが含まれていません', null, { response: apiData });
+            return;
+          }
+          const uploadURL = apiData.url;
+
+          // S3へPUTリクエストでファイルアップロード
+          const result = await fetch(uploadURL, {
+            method: 'PUT',
+            body: file,
+            headers: {
+              'Content-Type': file.type
+            }
+          });
+
+          if (result.ok) {
+            // アップロード先のURLを生成（アップロードURLのパラメータ部を除去）
+            const bucketUrl = uploadURL.split('?')[0];
+            const fileUrl = bucketUrl.replace('${S3_BUCKET_URL}', '${CLOUDFRONT_URL}');
+            uploadedFileUrls.push(fileUrl);
+
+            // Update progress
+            progressBar.style.width = '100%';
+          } else {
+            let responseText = '';
+            try {
+              responseText = await result.text();
+            } catch (e) {
+              responseText = 'レスポンスボディの取得に失敗しました';
+            }
+            displayError(
+              `ファイル ${file.name} のアップロード失敗: ${result.status} ${result.statusText}`,
+              null,
+              {
+                status: result.status,
+                statusText: result.statusText,
+                responseBody: responseText,
+                headers: Object.fromEntries([...result.headers.entries()])
+              }
+            );
+            return;
+          }
+        }
+
+        // All files uploaded successfully, register with gallery table
+        statusElement.textContent = "ファイルアップロード成功。ギャラリーテーブルに登録中...";
+
+        const galleryResponse = await fetch(`${galleryApiUrl}/gallery`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authIdToken}`
+          },
+          body: JSON.stringify({
+            photos: uploadedFileUrls,
+            tag: tags.length > 0 ? tags : [""],
+            text: textInput.value || ""
+          })
+        });
+
+        if (!galleryResponse.ok) {
+          let errorText = `ギャラリー登録APIリクエスト失敗: ${galleryResponse.status} ${galleryResponse.statusText}`;
+          let errorDetails = {};
+          try {
+            const errorBody = await galleryResponse.json();
+            errorDetails = errorBody;
+            errorText += `\n詳細: ${JSON.stringify(errorBody, null, 2)}`;
+          } catch (e) {
+            errorText += '\nレスポンスボディの取得に失敗しました';
+          }
+          displayError(errorText, null, {
+            status: galleryResponse.status,
+            statusText: galleryResponse.statusText,
+            details: errorDetails
+          });
+          return;
+        }
+
+        fileUrls = uploadedFileUrls;
+        statusElement.textContent = "アップロード成功! ギャラリーテーブルに登録完了!";
+        errorDetailsElement.style.display = 'none';
+
+        // Mobile-friendly URL display in result container
+        fileUrlsElement.innerHTML = fileUrls.map(url => {
+          // For mobile screens, truncate the URL display
+          let displayUrl = url;
+          if (window.innerWidth <= 480 && url.length > 40) {
+            displayUrl = url.substring(0, 20) + '...' + url.substring(url.length - 20);
+          }
+          return `<div title="${url}">${displayUrl}</div>`;
+        }).join('');
+
+        resultContainer.style.display = 'block';
+
+        // Reset for the next upload
+        selectedFiles = [];
+        updateFilesList();
+        tags = [];
+
+        // Clear tag elements
+        const tagElements = tagsContainer.querySelectorAll('.tag');
+        tagElements.forEach(tag => tag.remove());
+
+        textInput.value = '';
+      } catch (error) {
+        displayError('アップロード処理中にエラーが発生しました', error);
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    }
+
+    function displayError(message, error, details = {}) {
+      console.error('Error:', message, error, details);
+      statusElement.textContent = message;
+
+      let errorDetailsText = `エラー: ${message}\n\n`;
+      if (error) {
+        errorDetailsText += `エラーメッセージ: ${error.message}\n`;
+        if (error.stack) {
+          errorDetailsText += `スタックトレース: ${error.stack}\n\n`;
+        }
+      }
+      if (Object.keys(details).length > 0) {
+        errorDetailsText += `詳細情報:\n${JSON.stringify(details, null, 2)}`;
+      }
+      errorDetailsElement.textContent = errorDetailsText;
+      errorDetailsElement.style.display = 'block';
+    }
+
+    // Add resize handler to update UI elements on screen size change
+    window.addEventListener('resize', function() {
+      if (selectedFiles.length > 0) {
+        updateFilesList();
+      }
+
+      // Re-render tags if they exist
+      const existingTags = [...tags];
+      tags = [];
+      document.querySelectorAll('.tag').forEach(tag => tag.remove());
+      existingTags.forEach(tag => addTag(tag));
+    });
+  </script>
+</body>
+</html>
