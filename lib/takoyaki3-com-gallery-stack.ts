@@ -128,5 +128,11 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
     const gallery = api.root.addResource('gallery');
     gallery.addMethod('POST', postGalleryIntegration);
     gallery.addMethod('GET', getGalleryIntegration);
+
+    // API Gateway の URL を出力
+    new cdk.CfnOutput(this, 'GalleryApiUrl', {
+      description: 'Gallery API URL',
+      value: api.url ?? 'Something went wrong with the deployment',
+    });
   }
 }
