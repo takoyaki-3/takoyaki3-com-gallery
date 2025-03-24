@@ -99,6 +99,10 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
       architecture: lambda.Architecture.ARM_64,
       layers: [requestsLayer, pilLayer],
     });
+    postGalleryHandler.addToRolePolicy(new cdk.aws_iam.PolicyStatement({
+      actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+      resources: ['*'],
+    }));
 
     // GET 用 Lambda 関数
     const getGalleryHandler = new lambda.Function(this, 'GetGalleryHandler', {
@@ -111,6 +115,10 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
       },
       architecture: lambda.Architecture.ARM_64,
     });
+    getGalleryHandler.addToRolePolicy(new cdk.aws_iam.PolicyStatement({
+      actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+      resources: ['*'],
+    }));
 
     // 必要な権限の付与
     galleryTable.grantWriteData(postGalleryHandler);
