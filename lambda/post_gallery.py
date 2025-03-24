@@ -27,12 +27,12 @@ def handler(event, context):
       decoded_token = verify_firebase_token(token)
       user_id = decoded_token.get('user_id')
 
-      # Check if user is allowed (if allowed_users is configured)
-      if allowed_users and allowed_users[0] and user_id not in allowed_users:
-        return {
-          "statusCode": 403,
-          "body": json.dumps({"error": "アクセス権限がありません"})
-        }
+      # # Check if user is allowed (if allowed_users is configured)
+      # if allowed_users and allowed_users[0] and user_id not in allowed_users:
+      #   return {
+      #     "statusCode": 403,
+      #     "body": json.dumps({"error": "アクセス権限がありません"})
+      #   }
     except Exception as e:
       return {
         "statusCode": 401,
