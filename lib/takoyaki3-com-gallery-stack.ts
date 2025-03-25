@@ -142,14 +142,115 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, 'GalleryApi', {
       restApiName: 'Gallery Service',
       description: 'This service serves gallery.',
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ['Content-Type', 'Authorization'],
+        allowCredentials: true,
+      },
     });
 
-    const postGalleryIntegration = new apigateway.LambdaIntegration(postGalleryHandler);
-    const getGalleryIntegration = new apigateway.LambdaIntegration(getGalleryHandler);
+    const postGalleryIntegration = new apigateway.LambdaIntegration(postGalleryHandler, {
+      proxy: false,
+      requestTemplates: {
+        'application/json': JSON.stringify({
+          "body": "$input.json('$')",
+          "headers": {
+            "Authorization": "$input.params('Authorization')"
+          }
+        })
+      },
+      integrationResponses: [
+        {
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': "'*'",
+          },
+        },
+        {
+          statusCode: '401',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': "'*'",
+          },
+        },
+        {
+          statusCode: '403',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': "'*'",
+          },
+        },
+        {
+          statusCode: '500',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': "'*'",
+          },
+        },
+      ],
+    });
+
+    const getGalleryIntegration = new apigateway.LambdaIntegration(getGalleryHandler, {
+      proxy: false,
+      integrationResponses: [
+        {
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': "'*'",
+          },
+        },
+        {
+          statusCode: '500',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': "'*'",
+          },
+        },
+      ],
+    });
 
     const gallery = api.root.addResource('gallery');
-    gallery.addMethod('POST', postGalleryIntegration);
-    gallery.addMethod('GET', getGalleryIntegration);
+    gallery.addMethod('POST', postGalleryIntegration, {
+      methodResponses: [
+        {
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': true,
+          },
+        },
+        {
+          statusCode: '401',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': true,
+          },
+        },
+        {
+          statusCode: '403',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': true,
+          },
+        },
+        {
+          statusCode: '500',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': true,
+          },
+        },
+      ],
+    });
+    gallery.addMethod('GET', getGalleryIntegration, {
+      methodResponses: [
+        {
+          statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': true,
+          },
+        },
+        {
+          statusCode: '500',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': true,
+          },
+        },
+      ],
+    });
 
     // API Gateway の URL を出力
     new cdk.CfnOutput(this, 'ApiUrl', {

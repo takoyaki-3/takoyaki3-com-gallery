@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 import boto3
 import firebase_admin
+from firebase_admin import auth
 import logging
 
 # ロガーの設定
