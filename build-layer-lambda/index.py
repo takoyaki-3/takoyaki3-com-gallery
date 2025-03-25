@@ -3,6 +3,7 @@ import tempfile
 import subprocess
 import boto3
 import zipfile
+import time
 
 s3 = boto3.client('s3')
 
@@ -15,35 +16,38 @@ def handler(event, context):
   request_type = event.get('RequestType')
   props = event.get('ResourceProperties', {})
 
-  # 取りたいパラメータ: "PackageName" (例: "requests==2.31.0"), "OutputBucket" など
-  package_name_and_version = props.get('PackageName')  # "requests==2.31.0" の想定
+  # 取りたいパラメータ: "PackageName" (例: "requests==2.31.0" または "firebase-admin==6.6.0 google-auth==2.29.0"), "OutputBucket" など
+  package_names_and_versions = props.get('PackageName', '').split()  # スペース区切りで複数パッケージ対応
   output_bucket = props.get('OutputBucket')
   # Delete イベントなら何もしないで成功返す
   if request_type == 'Delete':
     return cfn_response('SUCCESS', "Delete request")
 
-  if not package_name_and_version or not output_bucket:
+  if not package_names_and_versions or not output_bucket:
     return cfn_response('FAILED', f"PackageName or OutputBucket not specified")
 
-  # ZIP 名を作る ("requests==2.31.0.zip" のように)
-  zip_filename = f"{package_name_and_version}.zip"
+  # ZIP 名を作る (最初のパッケージ名 + タイムスタンプでユニーク化)
+  first_package = package_names_and_versions[0].split('==')[0]
+  timestamp = int(time.time())
+  zip_filename = f"{first_package}-{timestamp}.zip"
 
   # /tmp に作業ディレクトリを作る
   with tempfile.TemporaryDirectory() as tmpdir:
     python_dir = os.path.join(tmpdir, 'python')
     os.mkdir(python_dir)
 
-    # pip install
-    cmd = [
-      'pip', 'install',
-      package_name_and_version,
-      '-t', python_dir,
-      '--no-cache-dir'
-    ]
-    try:
-      subprocess.check_call(cmd)
-    except subprocess.CalledProcessError as e:
-      return cfn_response('FAILED', f"pip install failed: {str(e)}")
+    # pip install (複数パッケージ対応)
+    for package in package_names_and_versions:
+      cmd = [
+        'pip', 'install',
+        package,
+        '-t', python_dir,
+        '--no-cache-dir'
+      ]
+      try:
+        subprocess.check_call(cmd)
+      except subprocess.CalledProcessError as e:
+        return cfn_response('FAILED', f"pip install failed for {package}: {str(e)}")
 
     # ZIP 化
     zip_path = os.path.join(tmpdir, zip_filename)

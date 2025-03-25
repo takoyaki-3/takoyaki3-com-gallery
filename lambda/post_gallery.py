@@ -1,10 +1,8 @@
 import os
 import json
-import uuid
 from datetime import datetime
 import boto3
-import jwt
-import time
+import firebase_admin
 import logging
 
 # ロガーの設定
@@ -111,33 +109,25 @@ def handler(event, context):
 
 def verify_firebase_token(token):
   """
-  Firebaseトークンを検証する関数
+  Firebaseトークンを検証する関数 (Firebase Admin SDKを使用)
   """
   try:
-    # # 実際のFirebaseプロジェクトIDを環境変数から取得
-    # project_id = os.environ.get('FIREBASE_PROJECT_ID')
-    # if not project_id:
-    #   raise Exception("FIREBASE_PROJECT_ID environment variable is missing")
-
-    # 公開鍵を取得して署名を検証
-    jwks_url = f'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
-    jwks_client = jwt.PyJWKClient(jwks_url)
-    signing_key = jwks_client.get_signing_key_from_jwt(token)
+    # Firebase Admin SDKの初期化 (初回のみ)
+    if not firebase_admin._apps:
+      # 環境変数からサービスアカウントキーを取得
+      service_account_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON')
+      if service_account_json:
+        # JSON文字列から認証情報を生成
+        cred = firebase_admin.credentials.Certificate(
+          json.loads(service_account_json))
+      else:
+        # Application Default Credentialsを使用
+        cred = firebase_admin.credentials.ApplicationDefault()
+      firebase_admin.initialize_app(cred)
 
     # トークンの検証
-    decoded = jwt.decode(
-      token,
-      signing_key.key,
-      algorithms=["RS256"],
-      # audience=project_id,
-      # issuer=f'https://securetoken.google.com/{project_id}'
-    )
-
-    # トークンの有効期限確認
-    exp = decoded.get('exp', 0)
-    if exp < time.time():
-      raise Exception("Token expired")
-
-    return decoded
+    decoded_token = auth.verify_id_token(token)
+    print(f"Decoded token: {decoded_token}")
+    return decoded_token
   except Exception as e:
     raise Exception(f"Token validation failed: {str(e)}")

@@ -84,6 +84,12 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
       'cryptography==44.0.2'
     );
 
+    const firebaseAdminLayer = createPythonLayer(
+      'FirebaseAdminLayer',
+      'Layer containing Firebase Admin SDK',
+      'firebase-admin==6.6.0 google-auth==2.29.0'
+    );
+
     // DynamoDB テーブルの作成
     const galleryTable = new dynamodb.Table(this, 'GalleryTable', {
       tableName: `${prefix}-table`,
@@ -104,7 +110,7 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
         ALLOWED_USERS: process.env.ALLOWED_USERS ?? '',
       },
       architecture: lambda.Architecture.ARM_64,
-      layers: [requestsLayer, jwtLayer, cryptographyLayer],
+      layers: [requestsLayer, jwtLayer, cryptographyLayer, firebaseAdminLayer],
     });
     postGalleryHandler.addToRolePolicy(new cdk.aws_iam.PolicyStatement({
       actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],

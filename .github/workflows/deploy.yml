@@ -44,6 +44,7 @@ jobs:
         run: npx cdk deploy --require-approval never --outputs-file cdk-outputs.json
         env:
           ALLOWED_USERS: ${{ secrets.ALLOWED_USERS }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
 
       - name: Extract CDK outputs
         id: cdk-outputs
