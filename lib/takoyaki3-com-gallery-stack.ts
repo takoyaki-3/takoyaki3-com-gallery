@@ -108,6 +108,7 @@ export class Takoyaki3ComGalleryStack extends cdk.Stack {
       environment: {
         GALLERY_TABLE_NAME: galleryTable.tableName,
         ALLOWED_USERS: process.env.ALLOWED_USERS ?? '',
+        FIREBASE_SERVICE_ACCOUNT_JSON: process.env.FIREBASE_SERVICE_ACCOUNT_JSON ?? '',
       },
       architecture: lambda.Architecture.ARM_64,
       layers: [requestsLayer, jwtLayer, cryptographyLayer, firebaseAdminLayer],
